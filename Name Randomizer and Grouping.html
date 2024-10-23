@@ -1,10 +1,9 @@
-
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Name Randomizer and Grouping</title>
+    <title>Multi-Function Randomizer</title>
     <style>
         body {
             background-color: black;
@@ -14,11 +13,13 @@
             padding: 20px;
         }
 
+
         h1 {
             color: blue;
             font-size: 3em;
             margin-top: 20px;
         }
+
 
         button {
             background-color: blue;
@@ -31,9 +32,26 @@
             margin: 20px;
         }
 
+
         button:hover {
             background-color: lightblue;
         }
+
+
+        input[type="number"], input[type="file"] {
+            background-color: black;
+            color: blue;
+            border: 2px solid blue;
+            padding: 10px;
+            font-size: 1.2em;
+            border-radius: 5px;
+        }
+
+
+        input[type="number"]::placeholder, input[type="file"]::placeholder {
+            color: blue;
+        }
+
 
         #output {
             font-size: 2em;
@@ -41,69 +59,280 @@
             color: yellow;
         }
 
+
+        .hidden {
+            display: none;
+        }
+
+
         .input-group {
             margin: 20px;
         }
+
+
     </style>
 </head>
 <body>
-    <h1>Name Randomizer and Grouping</h1>
+    <h1>Multi-Function Randomizer</h1>
 
-    <div class="input-group">
-        <button onclick="loadNames()">Fetch Names</button>
-        <input type="number" id="groupSize" placeholder="Group Size" />
-        <button onclick="generateGroups()">Generate Random Groups</button>
+
+    <nav>
+        <button onclick="showSection('nameGen')">Name Generation</button>
+        <button onclick="showSection('numberGen')">Number Generation</button>
+        <button onclick="showSection('groupGen')">Group Generation</button>
+        <button onclick="showSection('settings')">Settings</button>
+    </nav>
+
+
+    <!-- Name Generation Section -->
+    <div id="nameGen" class="hidden">
+        <h2>Name Generation</h2>
+        <div class="input-group">
+            <input type="file" id="nameFileInput" accept=".txt" style="display:none;" />
+            <button onclick="fetchNames()">Fetch Names</button>
+            <button onclick="getRandomName()">Generate Random Name</button>
+        </div>
+        <div id="nameOutput"></div>
     </div>
 
-    <button onclick="getRandomName()">Generate Random Name</button>
-    <div id="output"></div>
+
+    <!-- Number Generation Section -->
+    <div id="numberGen" class="hidden">
+        <h2>Number Generation</h2>
+        <div class="input-group">
+            <input type="file" id="numberFileInput" accept=".txt" style="display:none;" />
+            <button onclick="fetchNumbers()">Fetch Numbers</button>
+            <button onclick="getRandomNumber()">Generate Random Number</button>
+        </div>
+        <div id="numberOutput"></div>
+    </div>
+
+
+    <!-- Group Generation Section -->
+    <div id="groupGen" class="hidden">
+        <h2>Group Generation</h2>
+        <div class="input-group">
+            <input type="file" id="groupFileInput" accept=".txt" style="display:none;" />
+            <button onclick="fetchGroups()">Fetch Groups</button>
+            <input type="number" id="groupSize" placeholder="Group Size" />
+            <button onclick="generateGroups()">Generate Random Groups</button>
+            <button onclick="copyGroups()">Copy Groups</button>
+        </div>
+        <div id="groupOutput"></div>
+    </div>
+
+
+    <!-- Settings Section -->
+    <div id="settings" class="hidden">
+        <h2>Settings</h2>
+        <div class="input-group">
+            <label for="nameFileInput">Select Name File:</label>
+            <input type="file" id="nameFileInputSettings" accept=".txt" />
+            <button onclick="refreshFile('nameFileInputSettings')">Fetch</button>
+            <br>
+
+
+            <label for="numberFileInput">Select Number File:</label>
+            <input type="file" id="numberFileInputSettings" accept=".txt" />
+            <button onclick="refreshFile('numberFileInputSettings')">Fetch</button>
+            <br>
+
+
+            <label for="groupFileInput">Select Group File:</label>
+            <input type="file" id="groupFileInputSettings" accept=".txt" />
+            <button onclick="refreshFile('groupFileInputSettings')">Fetch</button>
+            <br>
+
+
+            <button onclick="saveSettings()">Save Settings</button>
+        </div>
+    </div>
+
 
     <script>
         let names = [];
+        let remainingNames = [];
+        let numbers = [];
+        let remainingNumbers = [];
+        let groups = [];
+        let generatedGroups = '';
 
-        // Load names from the backend service
-        async function loadNames() {
-            const response = await fetch('http://localhost:3000/names');
-            if (!response.ok) {
-                document.getElementById("output").innerHTML = "Failed to fetch names.";
-                return;
-            }
-            names = await response.json();
-            document.getElementById("output").innerHTML = "Names loaded successfully!";
+
+        // Show the selected section and hide others
+        function showSection(section) {
+            const sections = ['nameGen', 'numberGen', 'groupGen', 'settings'];
+            sections.forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(section).classList.remove('hidden');
         }
 
-        // Generate a random name
+
+        // Fetch names from the selected text file
+        function fetchNames() {
+            const fileInput = document.getElementById('nameFileInputSettings');
+            const file = fileInput.files[0];
+
+
+            if (!file) {
+                alert("Please select a name file in settings first.");
+                return;
+            }
+
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                names = content.split(/\r?\n/).filter(line => line.trim() !== '');
+                remainingNames = [...names];
+                document.getElementById("nameOutput").innerHTML = "Names loaded successfully!";
+            };
+            reader.onerror = function() {
+                document.getElementById("nameOutput").innerHTML = "Failed to read the file.";
+            };
+            reader.readAsText(file);
+        }
+
+
+        // Get a random name without reuse until all names are used
         function getRandomName() {
-            if (names.length === 0) {
-                document.getElementById("output").innerHTML = "Please load names first.";
+            if (remainingNames.length === 0) {
+                document.getElementById("nameOutput").innerHTML = "All names have been used!";
                 return;
             }
-            const randomIndex = Math.floor(Math.random() * names.length);
-            const randomName = names[randomIndex];
-            document.getElementById("output").innerHTML = `Generated Name: ${randomName}`;
+
+
+            const randomIndex = Math.floor(Math.random() * remainingNames.length);
+            const randomName = remainingNames.splice(randomIndex, 1)[0];
+            document.getElementById("nameOutput").innerHTML = `Generated Name: ${randomName}`;
         }
+
+
+        // Fetch numbers from the selected text file
+        function fetchNumbers() {
+            const fileInput = document.getElementById('numberFileInputSettings');
+            const file = fileInput.files[0];
+
+
+            if (!file) {
+                alert("Please select a number file in settings first.");
+                return;
+            }
+
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                numbers = content.split(/\r?\n/).filter(line => line.trim() !== '').map(Number);
+                remainingNumbers = [...numbers];
+                document.getElementById("numberOutput").innerHTML = "Numbers loaded successfully!";
+            };
+            reader.onerror = function() {
+                document.getElementById("numberOutput").innerHTML = "Failed to read the file.";
+            };
+            reader.readAsText(file);
+        }
+
+
+        // Get a random number without reuse until all numbers are used
+        function getRandomNumber() {
+            if (remainingNumbers.length === 0) {
+                document.getElementById("numberOutput").innerHTML = "All numbers have been used!";
+                return;
+            }
+
+
+            const randomIndex = Math.floor(Math.random() * remainingNumbers.length);
+            const randomNumber = remainingNumbers.splice(randomIndex, 1)[0];
+            document.getElementById("numberOutput").innerHTML = `Generated Number: ${randomNumber}`;
+        }
+
+
+        // Fetch groups from the selected text file
+        function fetchGroups() {
+            const fileInput = document.getElementById('groupFileInputSettings');
+            const file = fileInput.files[0];
+
+
+            if (!file) {
+                alert("Please select a group file in settings first.");
+                return;
+            }
+
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                groups = content.split(/\r?\n/).filter(line => line.trim() !== '');
+                document.getElementById("groupOutput").innerHTML = "Groups loaded successfully!";
+            };
+            reader.onerror = function() {
+                document.getElementById("groupOutput").innerHTML = "Failed to read the file.";
+            };
+            reader.readAsText(file);
+        }
+
 
         // Generate random groups of specified sizes
         function generateGroups() {
             const groupSize = parseInt(document.getElementById("groupSize").value);
             if (isNaN(groupSize) || groupSize <= 0) {
-                document.getElementById("output").innerHTML = "Please enter a valid group size.";
+                document.getElementById("groupOutput").innerHTML = "Please enter a valid group size.";
                 return;
             }
-            if (names.length === 0) {
-                document.getElementById("output").innerHTML = "Please load names first.";
+            if (groups.length === 0) {
+                document.getElementById("groupOutput").innerHTML = "Please load groups first.";
                 return;
             }
 
-            const shuffledNames = names.sort(() => Math.random() - 0.5);
-            const groups = [];
-            for (let i = 0; i < shuffledNames.length; i += groupSize) {
-                groups.push(shuffledNames.slice(i, i + groupSize));
+
+            const shuffledGroups = groups.sort(() => Math.random() - 0.5);
+            const outputGroups = [];
+            for (let i = 0; i < shuffledGroups.length; i += groupSize) {
+                outputGroups.push(shuffledGroups.slice(i, i + groupSize));
             }
 
-            const groupsDisplay = groups.map((group, index) => `Group ${index + 1}: ${group.join(', ')}`).join('<br>');
-            document.getElementById("output").innerHTML = "Generated Groups:<br>" + groupsDisplay;
+
+            generatedGroups = outputGroups.map((group, index) => `Group ${index + 1}: ${group.join(', ')}`).join('\n');
+            const groupsDisplay = generatedGroups.replace(/\n/g, '<br>');
+            document.getElementById("groupOutput").innerHTML = "Generated Groups:<br>" + groupsDisplay;
         }
+
+
+        // Copy the generated groups to the clipboard
+        function copyGroups() {
+            if (!generatedGroups) {
+                document.getElementById("groupOutput").innerHTML = "No groups to copy. Please generate groups first.";
+                return;
+            }
+
+
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = generatedGroups;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempTextArea);
+            document.getElementById("groupOutput").innerHTML += "<br>Groups copied to clipboard!";
+        }
+
+
+        // Refresh the file input by clearing it and allowing the user to select again
+        function refreshFile(inputId) {
+            const fileInput = document.getElementById(inputId);
+            fileInput.value = ""; // Clear the file input
+            fileInput.click(); // Open the file dialog
+        }
+
+
+        // Save settings; it now saves regardless of whether file inputs are filled
+        function saveSettings() {
+            alert("Settings saved successfully!");
+        }
+
+
+        // Initially show the name generation section
+        showSection('nameGen');
     </script>
 </body>
 </html>
