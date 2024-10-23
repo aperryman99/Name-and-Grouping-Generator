@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Name Randomizer and Grouping</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            color: blue;
+            font-size: 3em;
+            margin-top: 20px;
+        }
+
+        button {
+            background-color: blue;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 20px;
+        }
+
+        button:hover {
+            background-color: lightblue;
+        }
+
+        #output {
+            font-size: 2em;
+            margin-top: 20px;
+            color: yellow;
+        }
+
+        .input-group {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Name Randomizer and Grouping</h1>
+
+    <div class="input-group">
+        <button onclick="loadNames()">Fetch Names</button>
+        <input type="number" id="groupSize" placeholder="Group Size" />
+        <button onclick="generateGroups()">Generate Random Groups</button>
+    </div>
+
+    <button onclick="getRandomName()">Generate Random Name</button>
+    <div id="output"></div>
+
+    <script>
+        let names = [];
+
+        // Load names from the backend service
+        async function loadNames() {
+            const response = await fetch('http://localhost:3000/names');
+            if (!response.ok) {
+                document.getElementById("output").innerHTML = "Failed to fetch names.";
+                return;
+            }
+            names = await response.json();
+            document.getElementById("output").innerHTML = "Names loaded successfully!";
+        }
+
+        // Generate a random name
+        function getRandomName() {
+            if (names.length === 0) {
+                document.getElementById("output").innerHTML = "Please load names first.";
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * names.length);
+            const randomName = names[randomIndex];
+            document.getElementById("output").innerHTML = `Generated Name: ${randomName}`;
+        }
+
+        // Generate random groups of specified sizes
+        function generateGroups() {
+            const groupSize = parseInt(document.getElementById("groupSize").value);
+            if (isNaN(groupSize) || groupSize <= 0) {
+                document.getElementById("output").innerHTML = "Please enter a valid group size.";
+                return;
+            }
+            if (names.length === 0) {
+                document.getElementById("output").innerHTML = "Please load names first.";
+                return;
+            }
+
+            const shuffledNames = names.sort(() => Math.random() - 0.5);
+            const groups = [];
+            for (let i = 0; i < shuffledNames.length; i += groupSize) {
+                groups.push(shuffledNames.slice(i, i + groupSize));
+            }
+
+            const groupsDisplay = groups.map((group, index) => `Group ${index + 1}: ${group.join(', ')}`).join('<br>');
+            document.getElementById("output").innerHTML = "Generated Groups:<br>" + groupsDisplay;
+        }
+    </script>
+</body>
+</html>
